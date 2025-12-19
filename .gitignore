@@ -1,0 +1,7 @@
+bin
+build
+dependencies
+lib/googletest-1.17.0
+lib/usr/local
+lib/googletest-1.17.0.tar.gz
+.clangd
