@@ -5,3 +5,6 @@ lib/googletest-1.17.0
 lib/usr/local
 lib/googletest-1.17.0.tar.gz
 .clangd
+tests/KMeans_files
+tests/KMeans_files.zip
+tests/test
