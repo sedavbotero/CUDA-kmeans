@@ -1,9 +1,5 @@
 #include "cuda_utils.cuh"
 #include "utils.h"
-#include <cuda_device_runtime_api.h>
-#include <cuda_runtime_api.h>
-#include <device_atomic_functions.h>
-#include <type_traits>
 extern "C" {
 #include "kmeans.h"
 }
@@ -288,9 +284,9 @@ __global__ void scale_averages(double *old_centroids, double *new_centroids,
   cluster_sizes[threadIdx.x / number_of_dimensions] = 0;
 }
 
-void fit_kmeans(double *data, int number_of_dimensions,
-                int number_of_observations, int number_of_clusters,
-                double **centroids, char **cluster_assignments) {
+void fit_kmeans_custom(double *data, int number_of_dimensions,
+                       int number_of_observations, int number_of_clusters,
+                       double **centroids, char **cluster_assignments) {
   double *dev_data;
   CUDA_ERROR_CHECK(
       cudaMalloc(&dev_data, sizeof(*data) * number_of_observations *
@@ -335,12 +331,16 @@ void fit_kmeans(double *data, int number_of_dimensions,
       cudaMemset(dev_cluster_assignments, 0, number_of_observations));
   int iter = 0;
   int delta = number_of_observations;
+  int *dev_delta;
+  CUDA_ERROR_CHECK(cudaMalloc(&dev_delta, sizeof(delta)));
   for (; (double)delta / number_of_observations > 0.00; iter++) {
-    delta = 0;
+    CUDA_ERROR_CHECK(cudaMemset(dev_delta, 0, sizeof(delta)));
     kmeans_fit_iterate(dev_data, number_of_dimensions, number_of_observations,
                        number_of_clusters, dev_centroids, dev_next_centroids,
-                       dev_next_cluster_sizes, dev_cluster_assignments, &delta);
+                       dev_next_cluster_sizes, dev_cluster_assignments,
+                       dev_delta);
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
+#ifdef DEBUG
     printf("old centroids:\n");
     for (int i = 0; i < number_of_clusters; i++) {
       print_dev_vector<double>(&dev_centroids[i * number_of_dimensions],
@@ -353,9 +353,11 @@ void fit_kmeans(double *data, int number_of_dimensions,
     }
     printf("sizes: ");
     print_dev_vector<int>(dev_next_cluster_sizes, number_of_clusters);
+#endif /* ifdef DEBUG */
     scale_averages<<<1, number_of_dimensions * number_of_clusters>>>(
         dev_centroids, dev_next_centroids, dev_next_cluster_sizes,
         number_of_dimensions);
+#ifdef DEBUG
     printf("new centroids scaled:\n");
     for (int i = 0; i < number_of_clusters; i++) {
       print_dev_vector<double>(&dev_centroids[i * number_of_dimensions],
@@ -367,9 +369,15 @@ void fit_kmeans(double *data, int number_of_dimensions,
                                number_of_dimensions);
     }
     printf("delta: %d\n", delta);
+#endif /* ifdef DEBUG */
+    CUDA_ERROR_CHECK(
+        cudaMemcpy(&delta, dev_delta, sizeof(delta), cudaMemcpyDeviceToHost));
+    printf("  iteration:%5d,  changes:%10d\n", iter, delta);
   }
+#ifdef DEBUG
 
   printf("iter = %d\n", iter);
+#endif /* ifdef DEBUG */
   *cluster_assignments =
       (char *)malloc(sizeof(**cluster_assignments) * number_of_observations);
   *centroids = (double *)malloc(sizeof(**centroids) * number_of_clusters *

@@ -7,7 +7,7 @@ CFLAGS=-g -Wall $(INCLUDEFLAGS) $(DEFINE)
 LDLIBS=
 
 NVCC=nvcc
-NVCCFLAGS=-O2 -arch=sm_80 -g -G $(INCLUDEFLAGS) --std c++17 $(DEFINE)
+NVCCFLAGS=-O2 -arch=sm_80 -g -G $(INCLUDEFLAGS) --std c++17 $(DEFINE) --extended-lambda
 
 CFILES=$(wildcard src/*.c)
 CUDAFILES=$(wildcard src/*.cu)
