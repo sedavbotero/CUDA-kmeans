@@ -8,6 +8,7 @@
 #include <thrust/sort.h>
 #include <thrust/transform.h>
 #include <thrust/tuple.h>
+
 extern "C" {
 #include "kmeans.h"
 }
@@ -100,8 +101,9 @@ void fit_kmeans_thrust(double *data, int number_of_dimensions,
                        double **centroids, char **cluster_assignments) {
   thrust::device_vector<double> thrust_data(
       data, data + number_of_observations * number_of_dimensions);
-  printf("N = %d, k = %d, d = %d\n", number_of_observations, number_of_clusters,
-         number_of_dimensions);
+  // printf("N = %d, k = %d, d = %d\n", number_of_observations,
+  // number_of_clusters,
+  //        number_of_dimensions);
   // printf("[");
   // for (auto el = thrust_data.begin(); el != thrust_data.end(); el++) {
   //   std::cout << el[0] << ", ";
@@ -114,7 +116,7 @@ void fit_kmeans_thrust(double *data, int number_of_dimensions,
   thrust::device_vector<char> assignments(number_of_observations);
   thrust::device_vector<char> old_assignments(number_of_observations);
   int delta = number_of_observations;
-  while ((double)delta / number_of_observations > 0.00) {
+  for (int iter = 0; (double)delta / number_of_observations > 0.00; iter++) {
     // for (int i = 0; i < 200; i++) {
     old_assignments = assignments;
     // thrust::copy(assignments.begin(), assignments.end(),
@@ -142,7 +144,8 @@ void fit_kmeans_thrust(double *data, int number_of_dimensions,
     delta = thrust::inner_product(
         assignments.begin(), assignments.end(), old_assignments.begin(), 0,
         thrust::plus<int>(), thrust::not_equal_to<int>());
-    printf("delta = %d\n", delta);
+    // printf("delta = %d\n", delta);
+    printf("  iteration:%5d,  changes:%10d\n", iter, delta);
     if ((double)delta / number_of_observations <= 0.00) {
       break;
     }

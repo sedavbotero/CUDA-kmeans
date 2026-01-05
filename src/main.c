@@ -127,35 +127,35 @@ void parse_arguments(int argc, char *argv[],
   (difftime(end.tv_sec, start.tv_sec) +                                        \
    (double)(end.tv_nsec - start.tv_nsec) / 1000000000)
 
-void print_vector_d(double *vec, int len) {
-  printf("[");
-  for (int i = 0; i < len; i++) {
-    printf("%lf", vec[i]);
-    if (i < len - 1) {
-      printf(", ");
-    }
-  }
-  printf("]\n");
-}
-
-void print_vector_c(char *vec, int len) {
-  printf("[");
-  for (int i = 0; i < len; i++) {
-    printf("%d", vec[i]);
-    if (i < len - 1) {
-      printf(", ");
-    }
-  }
-  printf("]\n");
-}
-double calculate_vector_distance(int number_of_dimensions, const double *x,
-                                 const double *y) {
-  double result = 0;
-  for (int i = 0; i < number_of_dimensions; i++) {
-    result += (x[i] - y[i]) * (x[i] - y[i]);
-  }
-  return result;
-}
+// void print_vector_d(double *vec, int len) {
+//   printf("[");
+//   for (int i = 0; i < len; i++) {
+//     printf("%lf", vec[i]);
+//     if (i < len - 1) {
+//       printf(", ");
+//     }
+//   }
+//   printf("]\n");
+// }
+//
+// void print_vector_c(char *vec, int len) {
+//   printf("[");
+//   for (int i = 0; i < len; i++) {
+//     printf("%d", vec[i]);
+//     if (i < len - 1) {
+//       printf(", ");
+//     }
+//   }
+//   printf("]\n");
+// }
+// double calculate_vector_distance(int number_of_dimensions, const double *x,
+//                                  const double *y) {
+//   double result = 0;
+//   for (int i = 0; i < number_of_dimensions; i++) {
+//     result += (x[i] - y[i]) * (x[i] - y[i]);
+//   }
+//   return result;
+// }
 
 int main(int argc, char *argv[]) {
   struct arguments parsed_arguments;
@@ -194,12 +194,35 @@ int main(int argc, char *argv[]) {
   double *centroids;
   char *cluster_assignments;
   first_start = start;
-  printf("Computing on GPU (custom kernels) ...\n");
-  if (!timespec_get(&start, TIME_UTC)) {
-    ERR("timespec_get");
+  switch (parsed_arguments.computation_method) {
+  case GPU1:
+    printf("Computing on GPU (custom kernels) ...\n");
+    if (!timespec_get(&start, TIME_UTC)) {
+      ERR("timespec_get");
+    }
+    fit_kmeans_custom(data, d, N, k, &centroids, &cluster_assignments);
+    break;
+  case GPU2:
+    printf("Computing on GPU (thrust) ...\n");
+    if (!timespec_get(&start, TIME_UTC)) {
+      ERR("timespec_get");
+    }
+    fit_kmeans_thrust(data, d, N, k, &centroids, &cluster_assignments);
+    break;
+  case CPU:
+    printf("Computing on CPU  ...\n");
+    if (!timespec_get(&start, TIME_UTC)) {
+      ERR("timespec_get");
+    }
+    fit_kmeans_cpu(data, d, N, k, &centroids, &cluster_assignments);
+    // fprintf(stderr, "Not implemented\n");
+    // exit(EXIT_FAILURE);
+    break;
+  default:
+    fprintf(stderr, "Computation method not recognised\n");
+    exit(EXIT_FAILURE);
+    break;
   }
-  // fit_kmeans_custom(data, d, N, k, &centroids, &cluster_assignments);
-  fit_kmeans_thrust(data, d, N, k, &centroids, &cluster_assignments);
   if (!timespec_get(&end, TIME_UTC)) {
     ERR("timespec_get");
   }
@@ -218,22 +241,23 @@ int main(int argc, char *argv[]) {
   printf("Results saved, time: %.1lf seconds\n\n", time);
   time = NANODIFFTIME(end, first_start);
   printf("Total execution time: %.1lf seconds\n", time);
-  char *cla2;
-  double *cen2;
-  fit_kmeans_custom(data, d, N, k, &cen2, &cla2);
-  for (int i = 0; i < N; i++) {
-    if (cla2[i] != cluster_assignments[i]) {
-      printf("at i = %d: cla2 = %d != %d = cla1\n", i, cla2[i],
-             cluster_assignments[i]);
-      print_vector_d(&data[d * i], d);
-      for (int j = 0; j < k; j++) {
-        printf("dist1 = %lf\n",
-               calculate_vector_distance(d, &data[d * i], &centroids[d * j]));
-        printf("dist2 = %lf\n",
-               calculate_vector_distance(d, &data[d * i], &cen2[d * j]));
-      }
-    }
-  }
+  // char *cla2;
+  // double *cen2;
+  // fit_kmeans_custom(data, d, N, k, &cen2, &cla2);
+  // for (int i = 0; i < N; i++) {
+  //   if (cla2[i] != cluster_assignments[i]) {
+  //     printf("at i = %d: cla2 = %d != %d = cla1\n", i, cla2[i],
+  //            cluster_assignments[i]);
+  //     print_vector_d(&data[d * i], d);
+  //     for (int j = 0; j < k; j++) {
+  //       printf("dist1 = %lf\n",
+  //              calculate_vector_distance(d, &data[d * i], &centroids[d *
+  //              j]));
+  //       printf("dist2 = %lf\n",
+  //              calculate_vector_distance(d, &data[d * i], &cen2[d * j]));
+  //     }
+  //   }
+  // }
 
   return EXIT_SUCCESS;
 }

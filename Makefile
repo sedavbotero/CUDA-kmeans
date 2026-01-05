@@ -3,11 +3,11 @@ INCLUDEFLAGS=-I include
 DEFINE=
 
 CC=gcc
-CFLAGS=-g -Wall $(INCLUDEFLAGS) $(DEFINE)
+CFLAGS=-g -Wall $(INCLUDEFLAGS) $(DEFINE) -O3
 LDLIBS=
 
 NVCC=nvcc
-NVCCFLAGS=-O2 -arch=sm_80 -g -G $(INCLUDEFLAGS) --std c++17 $(DEFINE) --extended-lambda
+NVCCFLAGS=-O3 -arch=sm_80 -g -G $(INCLUDEFLAGS) --std c++17 $(DEFINE) --extended-lambda
 
 CFILES=$(wildcard src/*.c)
 CUDAFILES=$(wildcard src/*.cu)

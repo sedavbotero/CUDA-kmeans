@@ -1,5 +1,6 @@
 #include "cuda_utils.cuh"
 #include "utils.h"
+#include <cuda_runtime_api.h>
 extern "C" {
 #include "kmeans.h"
 }
@@ -41,9 +42,11 @@ template <typename T> void print_dev_vector(T *vec, int len) {
   CUDA_ERROR_CHECK(cudaDeviceSynchronize());
 }
 
-#define SHARED_DATA_SIZE(number_of_dimensions, number_of_clusters)             \
-  (sizeof(double) * number_of_dimensions * number_of_clusters +                \
-   sizeof(int) * number_of_clusters)
+// #define SHARED_DATA_SIZE(number_of_dimensions, number_of_clusters)             \
+//   (sizeof(double) * number_of_dimensions * number_of_clusters +                \
+//    sizeof(int) * number_of_clusters)
+
+#define SHARED_DATA_SIZE(number_of_dimensions, number_of_clusters) 0
 
 template <int number_of_dimensions>
 __global__ void
@@ -79,6 +82,7 @@ kmeans_fit_iterate_template(double *data, int number_of_observations,
   double x[number_of_dimensions];
   memcpy(x, &data[global_thread_id * number_of_dimensions],
          number_of_dimensions * sizeof(*x));
+  // double *x = &data[global_thread_id * number_of_dimensions];
   // print_vector(x, number_of_dimensions);
 
   double minimal_distance = INFINITY;
@@ -111,16 +115,17 @@ kmeans_fit_iterate_template(double *data, int number_of_observations,
   //       &new_centroids_buffer[closest_centroid * number_of_dimensions + i],
   //       x[i]);
   // }
+  // __syncthreads();
+  // __threadfence();
   // if (threadIdx.x != 0)
   //   return;
-  // __syncthreads();
-  // print_vector<int>(new_cluster_sizes_buffer, number_of_clusters);
+  // // print_vector<int>(new_cluster_sizes_buffer, number_of_clusters);
   // for (int i = 0; i < number_of_clusters; i++) {
   //   for (int j = 0; j < number_of_dimensions; j++) {
   //     atomicAdd(&new_centroids[i * number_of_dimensions + j],
   //               new_centroids_buffer[i * number_of_dimensions + j]);
   //   }
-  //   atomicAdd(&new_cluster_sizes[i], new_cluster_sizes_buffer[i] + 1);
+  //   atomicAdd(&new_cluster_sizes[i], new_cluster_sizes_buffer[i]);
   // }
 }
 
@@ -333,13 +338,19 @@ void fit_kmeans_custom(double *data, int number_of_dimensions,
   int delta = number_of_observations;
   int *dev_delta;
   CUDA_ERROR_CHECK(cudaMalloc(&dev_delta, sizeof(delta)));
+  cudaEvent_t start, mid, end;
+  float time, total_1 = 0.0, total_2 = 0.0;
+  CUDA_ERROR_CHECK(cudaEventCreate(&start));
+  CUDA_ERROR_CHECK(cudaEventCreate(&mid));
+  CUDA_ERROR_CHECK(cudaEventCreate(&end));
   for (; (double)delta / number_of_observations > 0.00; iter++) {
     CUDA_ERROR_CHECK(cudaMemset(dev_delta, 0, sizeof(delta)));
+    CUDA_ERROR_CHECK(cudaEventRecord(start));
     kmeans_fit_iterate(dev_data, number_of_dimensions, number_of_observations,
                        number_of_clusters, dev_centroids, dev_next_centroids,
                        dev_next_cluster_sizes, dev_cluster_assignments,
                        dev_delta);
-    CUDA_ERROR_CHECK(cudaDeviceSynchronize());
+    // CUDA_ERROR_CHECK(cudaDeviceSynchronize());
 #ifdef DEBUG
     printf("old centroids:\n");
     for (int i = 0; i < number_of_clusters; i++) {
@@ -354,9 +365,16 @@ void fit_kmeans_custom(double *data, int number_of_dimensions,
     printf("sizes: ");
     print_dev_vector<int>(dev_next_cluster_sizes, number_of_clusters);
 #endif /* ifdef DEBUG */
+    CUDA_ERROR_CHECK(cudaEventRecord(mid));
     scale_averages<<<1, number_of_dimensions * number_of_clusters>>>(
         dev_centroids, dev_next_centroids, dev_next_cluster_sizes,
         number_of_dimensions);
+    CUDA_ERROR_CHECK(cudaEventRecord(end));
+    CUDA_ERROR_CHECK(cudaEventSynchronize(end));
+    CUDA_ERROR_CHECK(cudaEventElapsedTime(&time, start, mid));
+    total_1 += time;
+    CUDA_ERROR_CHECK(cudaEventElapsedTime(&time, mid, end));
+    total_2 += time;
 #ifdef DEBUG
     printf("new centroids scaled:\n");
     for (int i = 0; i < number_of_clusters; i++) {
@@ -374,6 +392,9 @@ void fit_kmeans_custom(double *data, int number_of_dimensions,
         cudaMemcpy(&delta, dev_delta, sizeof(delta), cudaMemcpyDeviceToHost));
     printf("  iteration:%5d,  changes:%10d\n", iter, delta);
   }
+  printf("time iter %fms\n", total_1 / iter);
+  printf("time scale %fms\n", total_2 / iter);
+
 #ifdef DEBUG
 
   printf("iter = %d\n", iter);
