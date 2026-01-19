@@ -74,28 +74,6 @@ struct dataPointReduceIntoCentroids {
   }
 };
 
-// template <int dim> struct Point {
-//   double coordinates[dim];
-//   __device__ __host__ double distance(const Point<dim> &l,
-//                                       const Point<dim> &r) {
-//     double dist = 0;
-// #pragma unroll
-//     for (int i = 0; i < dim; i++) {
-//       dist += (l.coordinates[i] - r.coordinates[i]) *
-//               (l.coordinates[i] - r.coordinates[i]);
-//     }
-//     return std::sqrt(dist);
-//   }
-//   __device__ __host__ Point<dim> operator+(const Point<dim> &other) {
-//     Point<dim> out = new Point<dim>();
-// #pragma unroll
-//     for (int i = 0; i < dim; i++) {
-//       out.coordinates[i] = this->coordinates[i] + other.coordinates[i];
-//     }
-//     return out;
-//   }
-// };
-
 void fit_kmeans_thrust(double *data, int number_of_dimensions,
                        int number_of_observations, int number_of_clusters,
                        double **centroids, char **cluster_assignments) {

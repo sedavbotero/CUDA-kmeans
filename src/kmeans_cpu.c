@@ -76,7 +76,7 @@ void fit_kmeans_cpu(double *data, int number_of_dimensions,
         delta++;
       }
       (*cluster_assignments)[i] = closest_centroid;
-      counts[closest_centroid]++;
+      counts[(int)closest_centroid]++;
       for (int j = 0; j < number_of_dimensions; j++) {
         new_centroids[closest_centroid * number_of_dimensions + j] +=
             data[i * number_of_dimensions + j];

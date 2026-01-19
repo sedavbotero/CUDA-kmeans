@@ -14,11 +14,15 @@ double *load_text_data(const char *filename, int *N, int *d, int *k) {
   if (!fptr) {
     ERR("fopen");
   }
-  fscanf(fptr, "%d %d %d", N, d, k);
+  if (fscanf(fptr, "%d %d %d", N, d, k) != 3) {
+    ERR("fscanf");
+  }
   // printf("N = %d, d = %d, k = %d\n", *N, *d, *k);
   double *data = malloc(sizeof(*data) * *N * *d);
   for (int i = 0; i < *N * *d; i++) {
-    fscanf(fptr, "%lf", data + i);
+    if (fscanf(fptr, "%lf", data + i) != 1) {
+      ERR("fscanf");
+    }
   }
   fclose(fptr);
   return data;
@@ -29,12 +33,20 @@ double *load_binary_data(const char *filename, int *N, int *d, int *k) {
   if (!fptr) {
     ERR("fopen");
   }
-  fread(N, sizeof(*N), 1, fptr);
-  fread(d, sizeof(*d), 1, fptr);
-  fread(k, sizeof(*k), 1, fptr);
+  if (fread(N, sizeof(*N), 1, fptr) != 1) {
+    ERR("fread");
+  }
+  if (fread(d, sizeof(*d), 1, fptr) != 1) {
+    ERR("fread");
+  }
+  if (fread(k, sizeof(*k), 1, fptr) != 1) {
+    ERR("fread");
+  }
   // printf("N = %d, d = %d, k = %d\n", *N, *d, *k);
   double *data = malloc(sizeof(*data) * *N * *d);
-  fread(data, sizeof(*data), *N * *d, fptr);
+  if (fread(data, sizeof(*data), *N * *d, fptr) != *N * *d) {
+    ERR("fread");
+  }
   fclose(fptr);
   return data;
 }
