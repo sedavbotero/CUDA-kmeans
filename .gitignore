@@ -3,3 +3,6 @@ build
 dependencies
 .clangd
 tests/times.txt
+tests/KMeans_files
+tests/test_output_files
+tests/KMeans_files.zip

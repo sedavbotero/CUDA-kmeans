@@ -1,19 +1,20 @@
 INCLUDEFLAGS=-I include
 
-DEFINE=
-
 CC=gcc
-CFLAGS=-g -Wall $(INCLUDEFLAGS) $(DEFINE) -O3
+CFLAGS=-g -Wall $(INCLUDEFLAGS) -O3
 LDLIBS=
 
 NVCC=nvcc
-NVCCFLAGS=-O3 -arch=sm_80 -g -G $(INCLUDEFLAGS) --std c++17 $(DEFINE) --extended-lambda
+NVCCFLAGS=-O3 -arch=sm_80 -g -G $(INCLUDEFLAGS) --std c++17 --extended-lambda
 
 CFILES=$(wildcard src/*.c)
+CPPFILES=$(wildcard src/*.cpp)
 CUDAFILES=$(wildcard src/*.cu)
 OBJ=$(patsubst src/%.c,build/%.o,$(CFILES))
+OBJ+=$(patsubst src/%.cpp,build/%.o,$(CPPFILES))
 OBJ+=$(patsubst src/%.cu,build/%.o,$(CUDAFILES))
 CDEP=$(patsubst src/%.c,dependencies/%.d,$(CFILES))
+CPPDEP=$(patsubst src/%.cpp,dependencies/%.d,$(CPPFILES))
 CUDADEP=$(patsubst src/%.cu,dependencies/%.du,$(CUDAFILES))
 
 EXECNAME=bin/KMeans
@@ -33,6 +34,13 @@ dependencies/%.d: src/%.c Makefile
 	$(CC) $(CFLAGS) -M $< >>$@
 	echo "\t$(CC) $(CFLAGS) $< -o build/$*.o -c" >>$@
 
+dependencies/%.d: src/%.cpp Makefile
+	mkdir -p dependencies
+	mkdir -p build
+	echo -n "build/" >$@
+	$(CC) $(CFLAGS) -M $< >>$@
+	echo "\t$(CC) $(CFLAGS) $< -o build/$*.o -c" >>$@
+
 dependencies/%.du: src/%.cu Makefile
 	mkdir -p dependencies
 	mkdir -p build
@@ -40,7 +48,7 @@ dependencies/%.du: src/%.cu Makefile
 	$(NVCC) $(NVCCFLAGS) -M $< >>$@
 	echo "\t$(NVCC) $(NVCCFLAGS) $< -o build/$*.o -dc" >>$@
 
-include $(CDEP) $(CUDADEP)
+include $(CDEP) $(CPPDEP) $(CUDADEP)
 
 build: $(OBJ)
 	mkdir -p bin

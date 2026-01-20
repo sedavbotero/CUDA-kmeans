@@ -1,6 +1,7 @@
 #include "cuda_utils.cuh"
 #include "utils.h"
 #include <cuda_runtime_api.h>
+
 extern "C" {
 #include "kmeans.h"
 }
@@ -79,7 +80,7 @@ inline void kmeans_fit_iterate(double *data, const int number_of_dimensions,
     kmeans_fit_iterate_template<i><<<NUMBER_OF_BLOCKS, BLOCK_SIZE>>>(
         data, number_of_observations, number_of_clusters, old_centroids,
         new_centroids, new_cluster_sizes, cluster_assignments, delta);
-  } else if constexpr (i <= 20) {
+  } else if constexpr (i < 20) {
     kmeans_fit_iterate<i + 1>(data, number_of_dimensions,
                               number_of_observations, number_of_clusters,
                               old_centroids, new_centroids, new_cluster_sizes,
