@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,6 +7,9 @@ extern "C" {
 #include "kmeans.h"
 }
 
+/**
+ * Calculates L2 distance squared between two points (Host/CPU version).
+ */
 template <int number_of_dimensions>
 inline double calculate_vector_distance(const double *x, const double *y) {
   double result = 0;
@@ -18,6 +22,10 @@ inline double calculate_vector_distance(const double *x, const double *y) {
 #define INFINITY (1.0 / 0.0)
 #define MAX_CLUSTERS 20
 
+/**
+ * Sequential K-means iteration loop; handles centroid updates and convergence
+ * checks.
+ */
 template <int number_of_dimensions>
 void fit_kmeans_cpu_template(double *data, int number_of_observations,
                              int number_of_clusters, double **centroids,
@@ -77,6 +85,9 @@ void fit_kmeans_cpu_template(double *data, int number_of_observations,
   *centroids = old_centroids;
 }
 
+/**
+ * Compile-time recursion to dispatch the CPU template for specific dimensions.
+ */
 template <int i = 1>
 void fit_kmeans_cpu_dispatch(double *data, int number_of_dimensions,
                              int number_of_observations, int number_of_clusters,
@@ -91,6 +102,9 @@ void fit_kmeans_cpu_dispatch(double *data, int number_of_dimensions,
   }
 }
 
+/**
+ * Entry point for the CPU-based K-means algorithm.
+ */
 void fit_kmeans_cpu(double *data, int number_of_dimensions,
                     int number_of_observations, int number_of_clusters,
                     double **centroids, char **cluster_assignments) {

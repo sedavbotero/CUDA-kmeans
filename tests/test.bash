@@ -52,7 +52,9 @@ do
             exit 1
         fi
 
-        diff $OUTPUT_FILE "./KMeans_files/results_5mln_4d_5c.txt"
+        cat ./KMeans_files/results_5mln_4d_5c.txt | tr -d '\r' > "cleaned_results"
+        diff $OUTPUT_FILE  "cleaned_results"
+        rm  "cleaned_results"
 
         if [[ $? > 0 ]]; then
             echo "Files don't match"

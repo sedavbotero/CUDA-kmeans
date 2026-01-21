@@ -6,6 +6,9 @@ extern "C" {
 #include "kmeans.h"
 }
 
+/**
+ * Calculates L2 distance squared between two points on the device.
+ */
 template <unsigned int number_of_dimensions>
 __device__ inline double calculate_vector_distance(const double *x,
                                                    const double *y) {
@@ -16,8 +19,10 @@ __device__ inline double calculate_vector_distance(const double *x,
   return result;
 }
 
-#define SHARED_DATA_SIZE(number_of_dimensions, number_of_clusters) 0
-
+/**
+ * Global kernel: Assigns points to clusters and accumulates sums/counts for new
+ * centroids.
+ */
 template <int number_of_dimensions>
 __global__ void
 kmeans_fit_iterate_template(double *data, int number_of_observations,
@@ -25,17 +30,6 @@ kmeans_fit_iterate_template(double *data, int number_of_observations,
                             double *new_centroids, int *new_cluster_sizes,
                             char *cluster_assignments, int *delta) {
   int global_thread_id = threadIdx.x + blockDim.x * blockIdx.x;
-  extern __shared__ double shared[];
-  double *new_centroids_buffer = shared;
-  int *new_cluster_sizes_buffer =
-      (int *)&(shared[number_of_dimensions * number_of_clusters]);
-  if (threadIdx.x < number_of_dimensions * number_of_clusters) {
-    new_centroids_buffer[threadIdx.x] = 0.0;
-  } else if (threadIdx.x <
-             number_of_dimensions * number_of_clusters + number_of_dimensions) {
-    new_cluster_sizes_buffer[threadIdx.x -
-                             number_of_dimensions * number_of_clusters] = 0;
-  }
   if (global_thread_id >= number_of_observations) {
     return;
   }
@@ -67,6 +61,9 @@ kmeans_fit_iterate_template(double *data, int number_of_observations,
   }
 }
 
+/**
+ * Host-side wrapper to launch the dimensionality-specific iteration kernel.
+ */
 template <unsigned char i = 1>
 inline void kmeans_fit_iterate(double *data, const int number_of_dimensions,
                                int number_of_observations,
@@ -88,6 +85,10 @@ inline void kmeans_fit_iterate(double *data, const int number_of_dimensions,
   }
 }
 
+/**
+ * Divides accumulated coordinate sums by cluster size to compute
+ * new means. Also cleans up vectors for next iteration.
+ */
 __global__ void scale_averages(double *old_centroids, double *new_centroids,
                                int *cluster_sizes, int number_of_dimensions) {
   old_centroids[threadIdx.x] =
@@ -98,6 +99,10 @@ __global__ void scale_averages(double *old_centroids, double *new_centroids,
   cluster_sizes[threadIdx.x / number_of_dimensions] = 0;
 }
 
+/**
+ * Entry point for the custom CUDA K-means algorithm; manages GPU memory
+ * lifecycle.
+ */
 void fit_kmeans_custom(double *data, int number_of_dimensions,
                        int number_of_observations, int number_of_clusters,
                        double **centroids, char **cluster_assignments) {
@@ -176,6 +181,8 @@ void fit_kmeans_custom(double *data, int number_of_dimensions,
 
   CUDA_ERROR_CHECK(cudaFree(dev_next_centroids));
   CUDA_ERROR_CHECK(cudaFree(dev_next_cluster_sizes));
+  CUDA_ERROR_CHECK(cudaFree(dev_cluster_assignments));
+  CUDA_ERROR_CHECK(cudaFree(dev_delta));
   CUDA_ERROR_CHECK(cudaFree(dev_centroids));
   CUDA_ERROR_CHECK(cudaFree(dev_data));
 }

@@ -13,6 +13,9 @@ extern "C" {
 #include "kmeans.h"
 }
 
+/**
+ * Calculates L2 distance squared between two points in N-dimensional space.
+ */
 template <int number_of_dimensions>
 __device__ inline double calculate_vector_distance(const double *x,
                                                    const double *y) {
@@ -23,6 +26,9 @@ __device__ inline double calculate_vector_distance(const double *x,
   return result;
 }
 
+/**
+ * Functor to find the nearest centroid for a given data point.
+ */
 template <int number_of_dimensions> struct assignClusterFunctor {
   const double *data;
   const int number_of_clusters;
@@ -47,6 +53,10 @@ template <int number_of_dimensions> struct assignClusterFunctor {
   }
 };
 
+/**
+ * Functor to accumulate data point coordinates into their assigned cluster
+ * sums.
+ */
 template <int number_of_dimensions> struct dataPointReduceIntoCentroids {
   const double *data;
   const int number_of_clusters;
@@ -70,6 +80,9 @@ template <int number_of_dimensions> struct dataPointReduceIntoCentroids {
   }
 };
 
+/**
+ * Core K-means logic using Thrust primitives
+ */
 template <int number_of_dimensions>
 void fit_kmeans_thrust_template(double *data, int number_of_observations,
                                 int number_of_clusters, double **centroids,
@@ -81,7 +94,9 @@ void fit_kmeans_thrust_template(double *data, int number_of_observations,
   thrust::device_vector<char> assignments(number_of_observations);
   thrust::device_vector<char> old_assignments(number_of_observations);
   int delta = number_of_observations;
+  thrust::device_vector<int> counts(number_of_clusters);
   for (int iter = 0; (double)delta / number_of_observations > 0.00; iter++) {
+    // Cluster assignment step
     old_assignments = assignments;
     assignClusterFunctor<number_of_dimensions> assignCluster(
         thrust::raw_pointer_cast(thrust_data.data()), number_of_clusters,
@@ -90,6 +105,7 @@ void fit_kmeans_thrust_template(double *data, int number_of_observations,
     thrust::transform(it, it + number_of_observations, assignments.begin(),
                       assignCluster);
 
+    // Check how many points have changed their cluster
     delta = thrust::inner_product(
         assignments.begin(), assignments.end(), old_assignments.begin(), 0,
         thrust::plus<int>(), thrust::not_equal_to<int>());
@@ -98,7 +114,8 @@ void fit_kmeans_thrust_template(double *data, int number_of_observations,
       break;
     }
 
-    thrust::device_vector<int> counts(number_of_clusters);
+    // Calculating new clusters
+    counts.assign(number_of_clusters, 0);
     thrust_centroids.assign(number_of_dimensions * number_of_clusters, 0.0);
     dataPointReduceIntoCentroids<number_of_dimensions> reductor(
         thrust::raw_pointer_cast(thrust_data.data()), number_of_clusters,
@@ -110,6 +127,7 @@ void fit_kmeans_thrust_template(double *data, int number_of_observations,
         thrust::make_tuple(it + number_of_observations, assignments.end()));
     thrust::for_each(zip_start, zip_end, reductor);
 
+    // Scaling the new cluster centroids
     int *counts_data = thrust::raw_pointer_cast(counts.data());
     thrust::transform(
         thrust::make_zip_iterator(thrust_centroids.begin(),
@@ -134,6 +152,10 @@ void fit_kmeans_thrust_template(double *data, int number_of_observations,
   thrust::copy(thrust_centroids.begin(), thrust_centroids.end(), *centroids);
 }
 
+/**
+ * Compile-time recursion to select the template instance matching the data
+ * dimensionality.
+ */
 template <int i = 1>
 inline void
 fit_kmeans_thrust_dispatch(double *data, int number_of_dimensions,
@@ -151,6 +173,9 @@ fit_kmeans_thrust_dispatch(double *data, int number_of_dimensions,
   }
 }
 
+/**
+ * Entry point for the Thrust-based K-means algorithm.
+ */
 void fit_kmeans_thrust(double *data, int number_of_dimensions,
                        int number_of_observations, int number_of_clusters,
                        double **centroids, char **cluster_assignments) {
