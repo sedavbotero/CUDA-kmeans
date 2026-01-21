@@ -70,8 +70,8 @@ template <int number_of_dimensions> struct dataPointReduceIntoCentroids {
         centroids(_centroids), counts(_counts) {}
 
   __device__ void operator()(thrust::tuple<int, char &> iterator) {
-    const int idx = iterator.get<0>();
-    const char label = iterator.get<1>();
+    const int idx = thrust::get<0>(iterator);
+    const char label = thrust::get<1>(iterator);
     for (int i = 0; i < number_of_dimensions; i++) {
       atomicAdd(&centroids[label * number_of_dimensions + i],
                 data[idx * number_of_dimensions + i]);
@@ -127,7 +127,7 @@ void fit_kmeans_thrust_template(double *data, int number_of_observations,
         thrust::make_tuple(it + number_of_observations, assignments.end()));
     thrust::for_each(zip_start, zip_end, reductor);
 
-    // Scaling the new cluster centroids
+    // Scaling the new centroids
     int *counts_data = thrust::raw_pointer_cast(counts.data());
     thrust::transform(
         thrust::make_zip_iterator(thrust_centroids.begin(),
@@ -138,9 +138,9 @@ void fit_kmeans_thrust_template(double *data, int number_of_observations,
                                       number_of_dimensions)),
         thrust_centroids.begin(),
         [counts_data] __device__(thrust::tuple<double &, int> it) {
-          return (double)it.get<0>() /
+          return (double)thrust::get<0>(it) /
                  ((double)counts_data[(
-                     int)(((int)it.get<1>() / number_of_dimensions))]);
+                     int)(((int)thrust::get<1>(it) / number_of_dimensions))]);
         });
   }
 

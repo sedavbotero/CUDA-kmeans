@@ -4,8 +4,15 @@ CC=gcc
 CFLAGS=-g -Wall $(INCLUDEFLAGS) -O3
 LDLIBS=
 
+CUDA_PATH ?= /usr/local/cuda-13.1
+CCCL_INCLUDE = $(CUDA_PATH)/targets/x86_64-linux/include/cccl
+
 NVCC=nvcc
-NVCCFLAGS=-O3 -arch=sm_80 -g -G $(INCLUDEFLAGS) --std c++17 --extended-lambda
+NVCCFLAGS=-O3 \
+	-gencode arch=compute_60,code=sm_60 \
+	-gencode arch=compute_75,code=sm_75 \
+	-gencode arch=compute_80,code=sm_80 \
+	  -g -G $(INCLUDEFLAGS) --std c++17 --extended-lambda -I $(CCCL_INCLUDE)
 
 CFILES=$(wildcard src/*.c)
 CPPFILES=$(wildcard src/*.cpp)
@@ -30,23 +37,23 @@ clean:
 dependencies/%.d: src/%.c Makefile
 	mkdir -p dependencies
 	mkdir -p build
-	echo -n "build/" >$@
+	printf "build/" >$@
 	$(CC) $(CFLAGS) -M $< >>$@
-	echo "\t$(CC) $(CFLAGS) $< -o build/$*.o -c" >>$@
+	printf "\t$(CC) $(CFLAGS) $< -o build/$*.o -c\n" >>$@
 
 dependencies/%.d: src/%.cpp Makefile
 	mkdir -p dependencies
 	mkdir -p build
-	echo -n "build/" >$@
+	printf "build/" >$@
 	$(CC) $(CFLAGS) -M $< >>$@
-	echo "\t$(CC) $(CFLAGS) $< -o build/$*.o -c" >>$@
+	printf "\t$(CC) $(CFLAGS) $< -o build/$*.o -c\n" >>$@
 
 dependencies/%.du: src/%.cu Makefile
 	mkdir -p dependencies
 	mkdir -p build
-	echo -n "build/" >$@
+	printf "build/" >$@
 	$(NVCC) $(NVCCFLAGS) -M $< >>$@
-	echo "\t$(NVCC) $(NVCCFLAGS) $< -o build/$*.o -dc" >>$@
+	printf "\t$(NVCC) $(NVCCFLAGS) $< -o build/$*.o -dc\n" >>$@
 
 include $(CDEP) $(CPPDEP) $(CUDADEP)
 
