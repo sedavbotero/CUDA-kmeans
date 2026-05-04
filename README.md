@@ -1,3 +1,5 @@
+This project was part of a university course on CUDA. Hence the use of Polish and references to university things.
+
 # CUDA - projekt 2 - Algorytm k-means
 
 ## Struktura projektu
