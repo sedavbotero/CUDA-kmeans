@@ -9,7 +9,6 @@ CCCL_INCLUDE = $(CUDA_PATH)/targets/x86_64-linux/include/cccl
 
 NVCC=nvcc
 NVCCFLAGS=-O3 \
-	-gencode arch=compute_60,code=sm_60 \
 	-gencode arch=compute_75,code=sm_75 \
 	-gencode arch=compute_80,code=sm_80 \
 	  -g -G $(INCLUDEFLAGS) --std c++17 --extended-lambda -I $(CCCL_INCLUDE)
@@ -61,5 +60,11 @@ build: $(OBJ)
 	mkdir -p bin
 	 $(NVCC) $(OBJ) -o $(EXECNAME) $(LDLIBS) $(NVCCFLAGS)
 
-check: build
+tests/KMeans_files.tar.bz2:
+	cd tests && wget https://spages.mini.pw.edu.pl/~boteros/KMeans_files.tar.bz2
+
+tests/KMeans_files: tests/KMeans_files.tar.bz2
+	cd tests && tar xvf KMeans_files.tar.bz2
+
+check: build tests/KMeans_files
 	cd tests && ./test.bash
